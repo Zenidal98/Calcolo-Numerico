@@ -1,0 +1,145 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+#Qui il minimo globale è in (1,1)
+
+def next_step(x, grad,k):
+    alpha = 1.1
+    rho = 0.5
+    c1 = 0.25
+    p = -grad
+    j = 0
+    jmax = 10
+    while ((f(x + alpha * p) > f(x) + c1 * alpha * np.dot(grad, p)) and j < jmax):
+        alpha = rho * alpha
+        j += 1
+    if (j > jmax):
+        return -1
+    else:
+        if (k%100)==0:
+          print(f"alpha= {alpha} per k= {k}")
+        return alpha
+
+def minimize(f, grad_f, x0, step, maxit, tol, xTrue, fixed=True):
+
+    if fixed:
+      print('Punto fisso')
+
+    else:
+      print('Backtracking')
+
+    #Dichiarazione dati
+    x_list = np.zeros((2, maxit + 1))
+    norm_grad_list = np.zeros(maxit + 1)
+    function_eval_list = np.zeros(maxit + 1)
+    error_list = np.zeros(maxit + 1)
+
+    #Inizializzazione dati
+    x_last = x0
+
+    x_list[:, 0] = x_last
+
+    k = 0
+
+    #Inizializzazione array
+    function_eval_list[k] = f(x_last)
+    error_list[k] = np.linalg.norm(x_last - xTrue)
+    norm_grad_list[k] = np.linalg.norm(grad_f(x_last))
+
+    while (np.linalg.norm(grad_f(x_last)) > tol and k < maxit):
+        k = k + 1
+        grad = grad_f(x_last)
+        if fixed:
+            step = step
+        else:
+            step = next_step(x_last, grad,k)
+        if(step == -1):
+            print('non convergente')
+            return (k)  # Se l'algoritmo di backtracking non converge, termina la minimizzazione
+
+        #Aggiornamento del punto e registrazione dei valori
+        x_last = x_last - step * grad
+
+        x_list[:, k] = x_last
+
+        function_eval_list[k] = f(x_last)
+        error_list[k] = np.linalg.norm(x_last - xTrue)
+        norm_grad_list[k] = np.linalg.norm(grad_f(x_last))
+
+    #Slicing valori utili
+    function_eval_list = function_eval_list[:k + 1]
+    error_list = error_list[:k + 1]
+    norm_grad_list = norm_grad_list[:k + 1]
+
+    print('iterations=', k)
+    print('last guess: x=(%f,%f)' % (x_list[0, k], x_list[1, k]))
+    return (x_last, norm_grad_list, function_eval_list, error_list, x_list, k)
+
+# Definizione delle funzioni f(x) e gradiente f(x)
+def f(vec):
+    x, y = vec
+    fout = 100 * ((y - x ** 2)** 2) + ((1 - x)**2)
+    return fout    #valore di f in quel punto dato in input
+
+def grad_f(vec):
+    x, y = vec
+    dfdx = 400*x**3 -400*x*y + 2*x -2
+    dfdy = 200 * (y - x**2)
+    return np.array([dfdx, dfdy])
+
+# Definizione del range per x e y
+x = np.linspace(0, 2, 100)
+y = np.linspace(0, 2, 100)
+X, Y = np.meshgrid(x, y)
+vec = np.array([X, Y])
+Z = f(vec)
+
+# Plot della superficie e dei contorni della funzione
+fig = plt.figure(figsize=(15, 8))
+ax = plt.axes(projection='3d')
+ax.set_title('$f(x,y)=100(y-x^2)^2 + (1-x)^2$')
+s = ax.plot_surface(X, Y, Z, cmap='viridis')
+fig.colorbar(s)
+plt.show()
+
+fig = plt.figure(figsize=(8, 5))
+contours = plt.contour(X, Y, Z, levels=100)
+plt.title('Contour plot $f(x,y)=100(y-x^2)^2 + (1-x)^2$')
+fig.colorbar(contours)
+plt.show()
+
+# Definizione dei parametri e minimizzazione della funzione con passo fisso e variabile
+step = 0.002  # Passo fisso
+maxitS = 5000
+tol = 1e-5
+x0 = np.array([0, 0])
+xTrue = np.array([1, 1])                   #punto di minimo globale
+(x_last, norm_grad_list_fixed, function_eval_list_fixed, error_list_fixed, x_list_fixed, k_fixed) = minimize(f, grad_f, x0, step, maxitS, tol, xTrue, fixed=True)
+(x_last, norm_grad_list_bt, function_eval_list_bt, error_list_bt, x_list_bt, k_bt) = minimize(f, grad_f, x0, step, maxitS, tol, xTrue, fixed=False)
+
+# Plot Errore
+plt.plot(error_list_fixed, '*-', label='Passo fisso')
+plt.plot(error_list_bt, '*-', label='backtracking')
+plt.legend()
+plt.title('Errore')
+plt.xlabel('Iterazioni')
+plt.ylabel('Errore')
+plt.show()
+
+#Plot Gradiente
+plt.plot(norm_grad_list_fixed, label='Passo fisso')
+plt.plot(norm_grad_list_bt, label='backtracking')
+plt.legend()
+plt.title('$||\\nabla f(x,y)||$')
+plt.xlabel('Iterazioni')
+plt.ylabel('Gradiente')
+plt.show()
+
+#Plot Funzione
+plt.plot(function_eval_list_fixed, label='Passo fisso')
+plt.plot(function_eval_list_bt, label='backtracking')
+plt.legend()
+plt.title('$f(x,y)$')
+plt.xlabel('Iterazioni')
+plt.ylabel('Funzione')
+plt.show()
