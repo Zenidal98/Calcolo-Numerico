@@ -1,0 +1,70 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.linalg
+
+def polinomio(alpha, x):
+  y_appr=np.zeros(x.size)
+  for i in range(alpha.size):
+    y_appr+= alpha[i] * np.power(x, i)
+  return y_appr
+
+punti = 10
+gradi = [1,2,3,5,7]
+f = lambda x: np.exp(x/2)
+x = np.linspace(-1, 1, num = punti)
+y = f(x)
+
+err_eq_normali = []
+err_svd = []
+gradi = [1,2,3,5,7]
+
+for n in gradi:                               #Risoluzione con equazioni Normali
+    A = np.zeros((punti, n+1))
+
+    for i in range(punti):
+        for j in range(n+1):
+            A[i][j]=x[i]**j
+
+    ATA = A.T @ A
+    ATy = A.T @ y
+    alpha_normali = np.linalg.solve(ATA, ATy)
+    punti_calcolati = polinomio(alpha_normali, x)
+    app_err= punti_calcolati-y
+    err_eq_normali.append(np.linalg.norm(app_err, 2))
+    plt.plot(x, punti_calcolati, label=str("grado "+str(n)))
+
+plt.plot(x, y, label="reale" )
+plt.legend()
+plt.title("equazioni normali")
+plt.show()
+
+for n in gradi:                               #Risoluzione con SVD
+    A = np.zeros((punti, n+1))
+
+    for i in range(punti):
+        for j in range(n+1):
+            A[i][j]=x[i]**j
+
+    U, S, Vt = scipy.linalg.svd(A, full_matrices=False)
+    alpha_svd = np.zeros(S.shape)
+
+    for i in range(n+1):
+        ui = U[:,i]
+        vi = Vt.T[:,i]
+        alpha_svd = alpha_svd + ((ui.T @ y) * vi / S[i])
+
+    punti_calcolati = polinomio(alpha_svd, x)
+    app_err= punti_calcolati-y
+    err_svd.append(np.linalg.norm(app_err, 2))
+    plt.plot(x, punti_calcolati, label=str("grado "+str(n)))
+
+plt.plot(x, y, label="reale")
+plt.legend()
+plt.title("SVD")
+plt.show()
+
+plt.plot(gradi, err_eq_normali, label="errori normali", marker='o')
+plt.plot(gradi, err_svd, label="errori svd", marker='.')
+plt.legend()
+plt.title("Errori normali vs SVD")
+plt.show()
