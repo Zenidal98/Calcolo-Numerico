@@ -1,0 +1,29 @@
+import numpy as np
+import numpy.matlib
+import scipy.linalg
+import scipy.linalg.decomp_lu as LUdec
+import matplotlib.pyplot as plt
+
+def solve_cholesky(n, A):
+
+    x = np.ones((n, 1))
+    b = np.dot(A, x)
+    condA = np.linalg.cond(A, p=2)
+    print('Condizionamento sulla matrice A: ', condA)
+    L = scipy.linalg.cholesky(A, lower=True)
+    B = np.matmul(L, L.T)
+    err = scipy.linalg.norm(A-B, 2)
+    print('Errore sulla matrice A = ', err)
+    y = scipy.linalg.solve(L, b)
+    my_x = scipy.linalg.solve(L.T, y)
+    norm = scipy.linalg.norm(x-my_x, 2)
+    print('Errore su x in norma 2 =', norm)
+    return (condA, norm)
+                                      #Test con matrice tridiagonale simmetrica e definita positiva avente sulla
+                                      #diagonale elementi uguali a 9 e quelli sopra e sotto diagonali uguali a -4
+print('\n\nTRIDIAGONALE')
+
+for n in np.arange(2, 100, 10):
+    print('\nn = ', n)
+    A_Tridiagonale = np.diag(9*np.ones(n)) + np.diag(-4*np.ones(n-1), k=-1) + np.diag(-4*np.ones(n-1), k=+1) #ogni np.diag crea una matrice a se che poi verrà sommata alle altre
+    solve_cholesky(n, A_Tridiagonale)
