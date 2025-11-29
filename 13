@@ -1,0 +1,155 @@
+import cv2 as cv
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage import data, metrics
+from scipy import signal
+from numpy import fft
+from scipy.optimize import minimize
+from utils import psf_fft, A, AT, gaussian_kernel
+
+# Immagine in floating point con valori tra 0 e 1
+X = data.camera().astype(np.float32) / 255
+m, n = X.shape
+
+# Genera il filtro di blur
+k = gaussian_kernel(15,2)
+plt.imshow(k, cmap='gray')
+plt.title('PSF (Point Spread Function)')
+plt.show()
+
+# Blur con OpenCV
+X_blurred_cv = cv.filter2D(X, -1, k, borderType=cv.BORDER_CONSTANT)
+plt.subplot(121).imshow(X, cmap='gray')
+plt.title('Original')
+plt.xticks([]), plt.yticks([])
+plt.subplot(122).imshow(X_blurred_cv, cmap='gray')
+plt.title('Blurred (OpenCV)')
+plt.xticks([]), plt.yticks([])
+plt.show()
+
+# Blur con FFT
+K = psf_fft(k, k.shape[0],(m, n))
+plt.imshow(np.abs(K), cmap='gray')
+plt.title('PSF (FFT)')
+plt.show()
+
+X_blurred_fft = np.real(fft.ifft2(fft.fft2(X) * fft.fft2(k, (m, n))))
+
+# Genera il rumore
+sigma = 0.02
+np.random.seed(42)
+noise = np.random.normal(scale=sigma, size=X.shape)
+
+# Aggiungi blur e rumore
+y = X_blurred_fft + noise
+PSNR = metrics.peak_signal_noise_ratio(X, y)
+ATy = AT(y, K)
+
+# Visualizziamo i risultati
+plt.figure(figsize=(30, 10))
+plt.subplot(121).imshow(X, cmap='gray')
+plt.title('Original')
+plt.xticks([]), plt.yticks([])
+plt.subplot(122).imshow(y, cmap='gray')
+plt.title(f'Corrupted (PSNR: {PSNR:.2f})')
+plt.xticks([]), plt.yticks([])
+plt.show()
+
+# Soluzione naive
+from scipy.optimize import minimize
+
+# Funzione da minimizzare
+def f_naive(x):
+    x = x.reshape((m, n))
+    Ax = A(x, K)
+    return 0.5 * np.sum(np.square(Ax - y))
+
+# Gradiente della funzione da minimizzare
+def df_naive(x):
+    x = x.reshape((m, n))
+    ATAx = AT(A(x,K),K)
+    d = ATAx - ATy
+    return d.reshape(m * n)
+
+# Minimizzazione della funzione
+x0 = y.reshape(m*n)
+max_iter = 25
+res_naive = minimize(f_naive, x0, jac=df_naive, method='CG', options={'maxiter': max_iter, 'return_all': True})
+
+# Per ogni iterazione calcola il PSNR rispetto all'originale
+PSNR_naive = np.zeros(max_iter + 1)
+for k, x_k in enumerate(res_naive.allvecs):
+    PSNR_naive[k] = metrics.peak_signal_noise_ratio(X, x_k.reshape(X.shape))
+
+# Risultato della minimizzazione
+X_res_naive = res_naive.x.reshape((m, n))
+
+# PSNR dell'immagine corrotta rispetto all'originale
+starting_PSNR_naive = np.full(PSNR_naive.shape[0], metrics.peak_signal_noise_ratio(X, y))
+
+# Visualizziamo i risultati
+plt.figure(figsize=(20, 6))
+plt.subplot(1, 2, 1)
+plt.plot(PSNR_naive, label="Naive Solution")
+plt.plot(starting_PSNR_naive, label="Corrupted Image")
+plt.legend()
+plt.title('PSNR per iterazione (Naive Solution)')
+plt.ylabel("PSNR")
+plt.xlabel('Iteration')
+plt.subplot(1, 2,2).imshow(X_res_naive, cmap='gray')
+plt.title('Reconstructed Image (Naive Solution)')
+plt.show()
+
+# Regolarizzazione
+# Funzione da minimizzare
+def f_reg(x, L):
+    nsq = np.sum(np.square(x))
+    x = x.reshape((m, n))
+    Ax = A(x, K)
+    return 0.5 * np.sum(np.square(Ax - y)) + 0.5 * L * nsq
+
+# Gradiente della funzione da minimizzare
+def df_reg(x, L):
+    Lx = L * x
+    x = x.reshape((m, n))
+    ATAx = AT(A(x,K),K)
+    d = ATAx - ATy
+    return d.reshape(m * n) + Lx
+
+x0 = y.reshape(m*n)
+lambdas = [0.01, 0.03, 0.05, 0.1]
+PSNRs_reg = []
+images_reg = []
+
+# Ricostruzione per diversi valori del parametro di regolarizzazione
+for i, L in enumerate(lambdas):
+    # Esegui la minimizzazione con al massimo 50 iterazioni
+    max_iter = 50
+    res_reg = minimize(f_reg, x0, (L), jac=df_reg, method='CG', options={'maxiter': max_iter})
+
+    # Aggiungi la ricostruzione nella lista images_reg
+    X_curr_reg = res_reg.x.reshape(X.shape)
+    images_reg.append(X_curr_reg)
+
+    # Stampa il PSNR per il valore di lambda attuale
+    PSNR_reg = metrics.peak_signal_noise_ratio(X, X_curr_reg)
+    PSNRs_reg.append(PSNR_reg)
+    print(f'PSNR: {PSNR_reg:.2f} (λ = {L:.2f})')
+
+# Visualizziamo i risultati
+plt.plot(lambdas, PSNRs_reg, marker='o')
+plt.title('PSNR per λ')
+plt.ylabel("PSNR")
+plt.xlabel('λ')
+plt.show()
+
+plt.figure(figsize=(20, 6))
+plt.subplot(1, len(lambdas) + 2, 1).imshow(X, cmap='gray')
+plt.title("Original")
+plt.subplot(1, len(lambdas) + 2, 2).imshow(y, cmap='gray')
+plt.title("Corrupted")
+
+for i, L in enumerate(lambdas):
+    plt.subplot(1, len(lambdas) + 2, i + 3).imshow(images_reg[i], cmap='gray')
+    plt.title(f"Reconstruction (λ = {L:.2f})")
+plt.show()
