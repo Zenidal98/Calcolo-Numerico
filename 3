@@ -1,0 +1,35 @@
+import numpy as np
+import numpy.matlib
+import scipy.linalg
+import scipy.linalg.decomp_lu as LUdec
+
+Fine=14
+
+import matplotlib.pyplot as plt
+
+def solve_cholesky(n, A):
+
+    x = np.ones((n, 1))
+    b = np.dot(A, x)
+    condA = np.linalg.cond(A, p=2)
+    print('Condizionamento sulla matrice A: ', condA)
+    L = scipy.linalg.cholesky(A, lower=True)
+    B = np.matmul(L, L.T)
+    err = scipy.linalg.norm(A-B, 'fro')
+    print('Errore sulla matrice A = ', err)
+    y = scipy.linalg.solve(L, b)
+    my_x = scipy.linalg.solve(L.T, y)
+    norm = scipy.linalg.norm(x-my_x, 2)
+    print('Errore sulla x in norma 2 =', norm)
+    print('Nostra x:', my_x)
+    return (condA, norm)
+
+                                                      #Test con matrice di hilbert con n variabile fra 2 e 15
+print('HILBERT')
+
+for n in np.arange(2, Fine):
+    print('\nn = ', n)
+    A_Hilbert = scipy.linalg.hilbert(n)
+    solve_cholesky(n, A_Hilbert)
+
+print('Con la matrice di dimensione 14 da errore perche non è piu definita positiva')
