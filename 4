@@ -1,0 +1,42 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.linalg
+from skimage import data
+
+A = data.coins()
+m = A.shape[0]
+n = A.shape[1]
+
+print(A.shape)
+print("Rango",np.linalg.matrix_rank(A))
+
+plt.imshow(A, cmap='gray')
+plt.show()
+
+# al variare di p diadi
+A_appr = np.zeros(A.shape)
+p_max = 30
+U, E, Vt = scipy.linalg.svd(A, full_matrices=False)
+
+err_rel=np.zeros(p_max)
+c=np.zeros(p_max)
+p_values = np.arange(1, p_max+1)
+
+for i in range(p_max):
+  A_appr = A_appr + np.outer(U[:, i], Vt[i, :])* E[i]
+  err_rel[i] = np.linalg.norm(A-A_appr, 2)/np.linalg.norm(A, 2)
+  c[i] = (m*n) / (p_values[i] * ( m + n + 1))
+
+  if(int(i%(p_max//10)) == 0):                          # mostra ogni 3
+    plt.figure(figsize=(5, 5/2))
+    fig2 = plt.subplot(1, 2, 2)
+    fig2.imshow(A_appr, cmap='gray')
+    plt.title('Reconstructed image with p =' + str(i))
+    plt.show()
+
+plt.plot(err_rel, label="Errore relativo")
+plt.legend()
+plt.show()
+plt.plot(c, label="Fattore di compressione")
+plt.legend()
+plt.show()
