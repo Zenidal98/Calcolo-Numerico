@@ -1,0 +1,26 @@
+import numpy as np
+import numpy.matlib
+import scipy.linalg
+import scipy.linalg.decomp_lu as LUdec
+#help(LUdec.lu_factor)
+
+def solve_lu(n):
+
+    A = numpy.matlib.rand((n, n))
+
+    x = np.ones((n, 1))
+    b = np.dot(A, x)
+    print('n = ', n)
+
+    condA = np.linalg.cond(A, p=2)
+    print('Condizionamento Matrice A: ', condA)
+
+    lu, piv =LUdec.lu_factor(A)
+
+    my_x = scipy.linalg.lu_solve((lu, piv), b)
+
+    print('Errore su x in norma 2 =', scipy.linalg.norm(x-my_x, 2))
+
+                                                #test fra 10 e 1000
+for n in range(10,1000,50):
+    solve_lu(n)
