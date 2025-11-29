@@ -3,6 +3,7 @@ Repo del progetto di Calcolo Numerico anno 2024-2025 del secondo anno di Informa
 Il progetto prevedeva l'utilizzo di Phyton su Google Colab per risolvere 14 esercizi diversi. 
 Gli esercizi comprendono temi quali la risoluzione di sistemi lineari, trovare il condizionamento di matrici, comprimere immagini tramite SVD, approssimare ai minimi quadrati, calcolare zeri di funzione, applicare il metodo del gradiente a funzioni quadratiche e calcolare Deblur e Super Resolution di alcuni sistemi.
 
+ENG:
 Numerical Computing
 
 Repository for the Numerical Computing project (academic year 2024–2025) for the second year of the Computer Science program in Bologna.
